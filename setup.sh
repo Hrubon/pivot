@@ -7,7 +7,16 @@ veth="$prefix-veth"
 host="$prefix-host"
 i=0
 
+teardown() {
+	echo >&2 -ne "\nErrors detected, tearing down... "
+	./teardown.sh
+	echo >&2 "Done."
+}
+
+trap teardown ERR
+
 while read -r op a b c d; do
+	stdbuf -e0 echo -ne >&2 "$op $a\\t"
 	case "$op" in
 		R)
 			# create router NS
@@ -50,5 +59,6 @@ while read -r op a b c d; do
 			# add the other end to the network bridge
 			ip netns exec "$net-$b" ip link set "$veth-$i-1" master br0
 			i=$(($i + 1))
-		esac
+	esac
+	echo >&2 -e "\u2713"
 done
