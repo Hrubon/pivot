@@ -7,11 +7,12 @@ import sys
 def rand_subnet():
     addr = random.randrange(1, pow(2, 32))
     mask = random.randint(9, 24)
-    return (addr >> mask) << mask # subtract mask
+    mask_c = 32 - mask
+    return ((addr >> mask_c) << mask_c, mask) # subtract mask
 
-def nth_ip(n, subnet):
+def nth_ip(n, subnet, mask):
     assert n <= 254
-    return ipaddress.ip_address(subnet + 1 + n)
+    return (str(ipaddress.ip_address(subnet + 1 + n)) + "/{}").format(mask)
 
 def connect(router, network, ip):
     print("C", router, network, ip)
@@ -47,17 +48,16 @@ def gen(nrouters, nnets):
         for net in rnets:
             if net in ncnets:
                 ncnets.remove(net)
-            subnet = ipnets[net][0]
-            n = ipnets[net][1] + 1
-            ipnets[net] = (subnet, n)
-            connect(i + 1, net + 1, nth_ip(n, subnet))
+            (netaddr, mask), n = ipnets[net]
+            connect(i + 1, net + 1, nth_ip(n, netaddr, mask))
+            ipnets[net] = ((netaddr, mask), n + 1)
 
     # ensure all nets are connected
     for net in ncnets:
         r = random.randrange(nrouters)
-        subnet = ipnets[net][0]
-        n = ipnets[net][1] + 1
-        connect(r + 1, net + 1, nth_ip(n, subnet))
+        (netaddr, mask), n = ipnets[net]
+        connect(r + 1, net + 1, nth_ip(n, netaddr, mask))
+        ipnets[net] = ((netaddr, mask), n + 1)
 
 def usage(retval):
     sys.stderr.write("Usage: {} nrouters nnets\n".format(sys.argv[0]))
