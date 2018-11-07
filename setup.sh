@@ -49,5 +49,6 @@ while read -r op a b c d; do
 			ip netns exec "$host-$a" ip route add default via "$d" dev "$veth-$i-0"
 			# add the other end to the network bridge
 			ip netns exec "$net-$b" ip link set "$veth-$i-1" master br0
+			i=$(($i + 1))
 		esac
 done
