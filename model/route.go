@@ -1,12 +1,19 @@
-package model;
+package model
 
-type Route struct{}
+import (
+	"net"
+)
+
+type Route struct {
+	Network  *net.IPNet
+	RouterID string
+}
 type RouteList struct {
-	Routes []Route
+	Routes []*Route
 }
 
 func NewRouteList() *RouteList {
 	return &RouteList{
-		Routes: make([]Route, 0),
+		Routes: make([]*Route, 0),
 	}
 }

@@ -1,12 +1,13 @@
 package sources
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/Hrubon/pivot/model"
 	"github.com/pkg/errors"
-	"bufio"
-	"strconv"
-	"fmt"
 	"net"
+	"regexp"
+	"strconv"
 )
 
 const (
@@ -16,6 +17,20 @@ const (
 type BirdSource struct {
 	Source
 	ctlPath string
+}
+
+func parseRoute(l string) (*model.Route, error) {
+	re := regexp.MustCompile(`[\s\[\]]+`)
+	parts := re.Split(l, -1)
+	_, ipNet, err := net.ParseCIDR(parts[0])
+	if err != nil {
+		return nil, err
+	}
+	rid := parts[len(parts)-2]
+	return &model.Route{
+		Network: ipNet,
+		RouterID: rid,
+	}, nil
 }
 
 func (s *BirdSource) GetRoutes() (*model.RouteList, error) {
@@ -54,7 +69,13 @@ func (s *BirdSource) GetRoutes() (*model.RouteList, error) {
 		if len(l) == 0 {
 			continue // regular empty line
 		}
-		fmt.Println(l)
+		if l[0] >= byte('0') && l[0] <= byte('9') {
+			r, err := parseRoute(l)
+			if err != nil {
+				return nil, errors.Wrap(err, "error while parsing route")
+			}
+			rlist.Routes = append(rlist.Routes, r)
+		}
 	}
 	return nil, scanner.Err()
 }
