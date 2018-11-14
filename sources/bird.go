@@ -14,7 +14,7 @@ const (
 	dumpCmd = "show route"
 )
 
-type BirdSource struct {
+type BIRDSource struct {
 	Source
 	ctlPath string
 }
@@ -33,7 +33,7 @@ func parseRoute(l string) (*model.Route, error) {
 	}, nil
 }
 
-func (s *BirdSource) GetRoutes() (*model.RouteList, error) {
+func (s *BIRDSource) GetRoutes() (*model.RouteList, error) {
 	c, err := net.Dial("unix", s.ctlPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot connect to BIRD control socket")
@@ -80,8 +80,8 @@ func (s *BirdSource) GetRoutes() (*model.RouteList, error) {
 	return nil, scanner.Err()
 }
 
-func NewBirdSource(ctlPath string) *BirdSource {
-	return &BirdSource{
+func NewBIRDSource(ctlPath string) *BIRDSource {
+	return &BIRDSource{
 		ctlPath: ctlPath,
 	}
 }
