@@ -5,6 +5,7 @@ router="$prefix-router"
 net="$prefix-net"
 veth="$prefix-veth"
 host="$prefix-host"
+#root="/tmp/$prefix"
 i=0
 
 teardown() {
@@ -16,13 +17,16 @@ teardown() {
 trap teardown ERR
 
 while read -r op a b c d; do
-	stdbuf -e0 echo -ne >&2 "$op $a\\t"
+	echo -e >&2 "$op $a\\t"
 	case "$op" in
 		R)
 			# create router NS
 			ip netns add "$router-$a"
 			# enable IPv4 forwarding
 			ip netns exec "$router-$a" sysctl net.ipv4.ip_forward=1 >/dev/null
+			# setup loopback
+			ip netns exec "$router-$a" ip addr add 127.0.0.1/8 dev lo
+			ip netns exec "$router-$a" ip link set lo up
 			;;
 		N)
 			# create network NS
@@ -30,6 +34,9 @@ while read -r op a b c d; do
 			# create a bridge in the NS
 			ip netns exec "$net-$a" ip link add br0 type bridge
 			ip netns exec "$net-$a" ip link set br0 up
+			# setup loopback
+			ip netns exec "$net-$a" ip addr add 127.0.0.1/8 dev lo
+			ip netns exec "$net-$a" ip link set lo up
 			;;
 		C)
 			# create a veth pair connecting router $a with network $b, set both ends up
@@ -56,9 +63,36 @@ while read -r op a b c d; do
 			# assign IPv4 address $c to the host end of the veth pair, setup default GW
 			ip netns exec "$host-$a" ip addr add "$c" dev "$veth-$i-0"
 			ip netns exec "$host-$a" ip route add default via "$d" dev "$veth-$i-0"
+			# setup loopback
+			ip netns exec "$host-$a" ip addr add 127.0.0.1/8 dev lo
+			ip netns exec "$host-$a" ip link set lo up
 			# add the other end to the network bridge
 			ip netns exec "$net-$b" ip link set "$veth-$i-1" master br0
 			i=$(($i + 1))
+			;;
+		B)
+			# create BIRD config file
+			cat <<-END >"/tmp/bird.$a.cfg"
+				protocol kernel {
+					ipv4 {
+							export all;
+					};
+				}
+
+				protocol device {}
+
+				protocol ospf {
+					ipv4 {
+						import all;
+						export all;
+					};
+					area 0.0.0.0 {
+						interface "*";
+					};
+				}
+			END
+			# start BIRD in router's NS
+			ip netns exec "$router-$a" bird -c "/tmp/bird.$a.cfg" -s "/tmp/bird.$a.ctl"
+			;;
 	esac
-	echo >&2 -e "\u2713"
 done
