@@ -10,14 +10,17 @@ def rand_subnet():
     mask_c = 32 - mask
     return ((addr >> mask_c) << mask_c, mask) # subtract mask
 
-def nth_ip(n, subnet, mask):
+def nth_ip(n, subnet, mask = 0):
     assert n <= 254
-    return (str(ipaddress.ip_address(subnet + 1 + n)) + "/{}").format(mask)
+    if mask == 0:
+        return (str(ipaddress.ip_address(subnet + 1 + n)))
+    else:
+        return (str(ipaddress.ip_address(subnet + 1 + n)) + "/{}").format(mask)
 
 def connect(router, network, ip):
     print("C", router, network, ip)
 
-def gen(nrouters, nnets):
+def gen(nnets, nrouters, nhosts, randomize_subnets = False):
     # check input parameters
     if nrouters < 1 or nrouters > 254:
         raise ValueError("nrouters must be between 1 and 254")
@@ -35,8 +38,12 @@ def gen(nrouters, nnets):
     ipnets = []
     for i in nets:
         print("N", i + 1)
-        ipnets.append((rand_subnet(), 0))
-    
+        if randomize_subnets:
+            ipnets.append((rand_subnet(), 0))
+        else:
+            subnet = (10 << 24) + (i + 1 << 8)
+            ipnets.append(((subnet, 24), 0))
+
     # generate connections
     last_net = -1
     for i in range(nrouters):
@@ -59,17 +66,43 @@ def gen(nrouters, nnets):
         connect(r + 1, net + 1, nth_ip(n, netaddr, mask))
         ipnets[net] = ((netaddr, mask), n + 1)
 
+    # instruct to run BIRD on all routers
+    for i in routers:
+        print("B", i + 1)
+
+    # generate hosts
+    if nhosts <= len(ipnets):
+        ripnets = random.sample(ipnets, nhosts)
+    else:
+        ripnets = ipnets
+    alhosts = 0
+    hcounter = 0
+    for (netaddr, mask), n in ripnets:
+        k = random.randrange(1, nhosts)
+        if alhosts + k > nhosts:
+            k = nhosts - alhosts
+        for i in range(0, k):
+            gateway = nth_ip(random.randint(0, n), netaddr)
+            print("H", "Host-{}".format(hcounter + 1),  hcounter + 1, nth_ip(n + i + 1, netaddr, mask), gateway)
+            hcounter = hcounter + 1
+        alhosts = alhosts + k
+        
 def usage(retval):
-    sys.stderr.write("Usage: {} nrouters nnets\n".format(sys.argv[0]))
+    sys.stderr.write("Usage: {} nnets nrouters nhosts [randomize_subnets]\n".format(sys.argv[0]))
     exit(retval)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 4 or len(sys.argv) > 5:
         usage(1)
     try:
-        nrouters = int(sys.argv[1])
-        nnets = int(sys.argv[2])
-        gen(nrouters, nnets)
+        nnets = int(sys.argv[1])
+        nrouters = int(sys.argv[2])
+        nhosts = int(sys.argv[3])
+        if len(sys.argv) == 5:
+            rand = bool(sys.argv[4])
+        else:
+            rand = False
+        gen(nnets, nrouters, nhosts, rand)
     except ValueError as e:
         sys.stderr.write("{}: error: {}\n".format(sys.argv[0], e))
         exit(1)
