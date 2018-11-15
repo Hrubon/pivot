@@ -6,31 +6,17 @@ import (
 	"github.com/Hrubon/pivot/model"
 	"github.com/pkg/errors"
 	"net"
-	"regexp"
+	"strings"
 	"strconv"
 )
 
 const (
-	dumpCmd = "show route"
+	dumpCmd = "show ospf state"
 )
 
 type BIRDSource struct {
 	Source
 	ctlPath string
-}
-
-func parseRoute(l string) (*model.Route, error) {
-	re := regexp.MustCompile(`[\s\[\]]+`)
-	parts := re.Split(l, -1)
-	_, ipNet, err := net.ParseCIDR(parts[0])
-	if err != nil {
-		return nil, err
-	}
-	rid := parts[len(parts)-2]
-	return &model.Route{
-		Network: ipNet,
-		RouterID: rid,
-	}, nil
 }
 
 func (s *BIRDSource) GetRoutes() (*model.RouteList, error) {
@@ -43,6 +29,7 @@ func (s *BIRDSource) GetRoutes() (*model.RouteList, error) {
 	fmt.Fprintf(c, "%s\n", dumpCmd)
 	scanner := bufio.NewScanner(c)
 	scanner.Scan() // skip banner
+	var routerID string
 	for scanner.Scan() {
 		l := scanner.Text()
 		if len(l) == 0 {
@@ -66,15 +53,44 @@ func (s *BIRDSource) GetRoutes() (*model.RouteList, error) {
 		} else {
 			l = l[1:]
 		}
-		if len(l) == 0 {
+		t := strings.TrimSpace(l)
+		if len(t) == 0 {
+			routerID = ""
 			continue // regular empty line
 		}
-		if l[0] >= byte('0') && l[0] <= byte('9') {
-			r, err := parseRoute(l)
-			if err != nil {
-				return nil, errors.Wrap(err, "error while parsing route")
+		p := strings.Split(t, " ")
+		switch (p[0]) {
+		case "router":
+			if len(p) < 2 {
+				return nil, errors.New("router section missing router ID")
 			}
-			rlist.Routes = append(rlist.Routes, r)
+			routerID = p[1]
+			continue
+		case "stubnet":
+			fallthrough
+		case "network":
+			if routerID == "" {
+				continue
+			}
+			if len(p) < 4 || p[2] != "metric" {
+				fmt.Println("L:", t)
+				return nil, errors.New("malformed 'network' line in router section")
+			}
+			_, ipNet, err := net.ParseCIDR(p[1])
+			if err != nil {
+				return nil, errors.Wrap(err, "malformed network address")
+			}
+			metric, err := strconv.Atoi(p[3])
+			if err != nil {
+				return nil, errors.Wrap(err, "malformed metric")
+			}
+			rlist.Routes = append(rlist.Routes, &model.Route{
+				RouterID: routerID,
+				Network: ipNet,
+				Metric: metric,
+			})
+		default:
+			fmt.Println("Skipped:", t)
 		}
 	}
 	return nil, scanner.Err()

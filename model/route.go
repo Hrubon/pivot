@@ -7,6 +7,7 @@ import (
 type Route struct {
 	Network  *net.IPNet
 	RouterID string
+	Metric   int
 }
 type RouteList struct {
 	Routes []*Route

@@ -1,16 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"github.com/Hrubon/pivot/sources"
+	"github.com/Hrubon/pivot/terminal"
 	"log"
 )
 
 func main() {
-	s := sources.NewBIRDSource("/tmp/bird.1.ctl")
+	s := sources.NewBIRDSource("/tmp/bird.2.ctl")
 	rlist, err := s.GetRoutes()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(rlist)
+	gv := terminal.NewGraphviz("/tmp/map.pdf")
+	if err := gv.Draw(rlist); err != nil {
+		log.Fatal(err)
+	}
 }
