@@ -94,5 +94,22 @@ while read -r op a b c d; do
 			# start BIRD in router's NS
 			ip netns exec "$router-$a" bird -c "/tmp/bird.$a.cfg" -s "/tmp/bird.$a.ctl"
 			;;
+		Q)
+			# create Quagga ospfd config file
+			cat <<-END >"/tmp/ospfd.$a.cfg"
+				password 1234
+				interface *
+					ip ospf area 0.0.0.0
+
+				router ospf
+					redistribute connected
+					network 0.0.0.0/0 area 0.0.0.0
+			END
+			# start Quagga core Zebra daemon and OSPF daemon
+			ip netns exec "$router-$a" zebra -d -i "/tmp/zebra.$a.pid" -f "/dev/null"
+			ip netns exec "$router-$a" ospfd -d -i "/tmp/ospfd.$a.pid" -f "/tmp/ospfd.$a.cfg"
+			# expose marvelous Quagga command-line interface (VTY) through UNIX-domain socket
+			ip netns exec "$router-$a" socat UNIX-LISTEN:/tmp/ospfd.$a.ctl,fork TCP4-CONNECT:localhost:2604 > /dev/null 2>&1 &
+
 	esac
 done
