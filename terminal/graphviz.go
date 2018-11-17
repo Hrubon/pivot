@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	dotBin = "/usr/bin/neato"
+	gvizBin = "/usr/bin/neato"
 )
 
 type Graphviz struct {
@@ -24,18 +24,18 @@ func NewGraphviz(filename string) *Graphviz {
 }
 
 func (g *Graphviz) Draw(rlist *model.RouteList) error {
-	cmd := exec.Command(dotBin, "-Tpdf", "-o", g.filename)
+	cmd := exec.Command(gvizBin, "-Tpdf", "-o", g.filename)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return errors.Wrapf(err, "cannot pipe stdin to %s", dotBin)
+		return errors.Wrapf(err, "cannot pipe stdin to %s", gvizBin)
 	}
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "cannot start %s", dotBin)
+		return errors.Wrapf(err, "cannot start %s", gvizBin)
 	}
 	fmt.Fprintf(stdin, "graph G {\n")
-	fmt.Fprintf(stdin, "overlap = false;\n")
-	fmt.Fprintf(stdin, "sep = \"+20\";\n")
+	fmt.Fprintf(stdin, "\toverlap = false;\n")
+	fmt.Fprintf(stdin, "\tsep = \"+20\";\n")
 	nets := make(map[string]string, 0)
 	routers := make(map[string]string, 0)
 	for i, r := range rlist.Routes {
@@ -55,7 +55,7 @@ func (g *Graphviz) Draw(rlist *model.RouteList) error {
 	fmt.Fprintf(stdin, "}\n")
 	stdin.Close()
 	if err := cmd.Wait(); err != nil {
-		return errors.Wrapf(err, "error running %s", dotBin)
+		return errors.Wrapf(err, "error running %s", gvizBin)
 	}
 	return nil
 }

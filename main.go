@@ -16,4 +16,6 @@ func main() {
 	if err := gv.Draw(rlist); err != nil {
 		log.Fatal(err)
 	}
+	ui := terminal.NewWebUI("localhost", 9000)
+	ui.Start()
 }
