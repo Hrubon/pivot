@@ -1,0 +1,36 @@
+\input opmac
+\typosize[14/18]
+\activettchar|
+
+\chap Terminals
+
+\sec Web UI
+
+\begitems\style a
+* Web UI is a terminal, too.
+* HTTP/2 server push to update content periodically if the client supports it,
+  legacy polling mechanism otherwise
+* JavaScript-based drag`n'drop UI to rearrange the nodes with possibly other
+  ergonomic features.
+* Fundamental operation of the Web UI (e.g. display/export of network map)
+  must operate correctly without JavaScript support.
+* Overall goal: leverage modern web technologies to provide value, not to bother.
+\enditems
+
+\secc Object Rearrangement
+
+\begitems\style a
+* Objects representing nets and routers can be moved. The relocation of an object
+  results in a request being sent to the server, the object is then affixed to
+  this position on the map.
+* Upon next request/on next push update the client receives the new map where
+  the object in question has assumed its new position.
+* No intelligence in the redrawing of the map on the client, that's Graphviz's
+  job to do.
+* If an object has not been moved, its position is calculated by Graphviz
+  (the |neato| layout engine in fact). If it has been moved before, its position
+  is fixed. Such an object can be ``unpinned'' from the UI and will assume its
+  calculated position in the future.
+\enditems
+
+\bye
