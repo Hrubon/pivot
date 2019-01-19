@@ -1,4 +1,4 @@
-package drawing
+package terminal
 
 import (
 	"github.com/Hrubon/pivot/model"

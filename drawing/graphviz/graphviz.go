@@ -1,8 +1,9 @@
-package drawing
+package graphviz
 
 import (
 	"github.com/Hrubon/pivot/model"
 	"github.com/pkg/errors"
+	"io"
 	"os"
 	"os/exec"
 	"fmt"
@@ -12,27 +13,7 @@ const (
 	gvizBin = "/usr/bin/neato"
 )
 
-type Graphviz struct {
-	Drawer
-	filename string
-}
-
-func NewGraphviz(filename string) *Graphviz {
-	return &Graphviz{
-		filename: filename,
-	}
-}
-
-func (g *Graphviz) Draw(rlist *model.RouteList) error {
-	cmd := exec.Command(gvizBin, "-Tpdf", "-o", g.filename)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return errors.Wrapf(err, "cannot pipe stdin to %s", gvizBin)
-	}
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "cannot start %s", gvizBin)
-	}
+func writeGraph(rlist *model.RouteList, stdin io.WriteCloser) {
 	fmt.Fprintf(stdin, "graph G {\n")
 	fmt.Fprintf(stdin, "\toverlap = false;\n")
 	fmt.Fprintf(stdin, "\tsep = \"+20\";\n")
@@ -53,9 +34,37 @@ func (g *Graphviz) Draw(rlist *model.RouteList) error {
 			routers[r.RouterID], nets[r.Network.String()], r.Metric)
 	}
 	fmt.Fprintf(stdin, "}\n")
+}
+
+func Draw(rlist *model.RouteList, term string, w io.Writer) error {
+	cmd := exec.Command(gvizBin, "-T", term)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return errors.Wrapf(err, "cannot pipe stdin of %s", gvizBin)
+	}
+	cmd.Stdout = w
+	cmd.Stderr = os.Stderr // TODO
+	writeGraph(rlist, stdin)
 	stdin.Close()
+	if err := cmd.Start(); err != nil {
+		return errors.Wrapf(err, "cannot start %s", gvizBin)
+	}
 	if err := cmd.Wait(); err != nil {
 		return errors.Wrapf(err, "error running %s", gvizBin)
 	}
 	return nil
 }
+//
+//type Graphviz struct {
+//	Drawer
+//	filename string
+//}
+//
+//func NewGraphviz(filename string) *Graphviz {
+//	return &Graphviz{
+//		filename: filename,
+//	}
+//}
+//
+//func (g *Graphviz) Draw(rlist *model.RouteList) error {
+//}
