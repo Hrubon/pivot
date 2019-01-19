@@ -1,4 +1,6 @@
-#!/bin/sh -eu
+#!/bin/sh
+
+set -eux -o pipefail
 
 prefix="pivot"
 router="$prefix-router"

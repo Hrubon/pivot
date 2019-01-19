@@ -66,9 +66,7 @@ func (s *BIRDSource) GetRoutes() (*model.RouteList, error) {
 			}
 			routerID = p[1]
 			continue
-		case "stubnet":
-			fallthrough
-		case "network":
+		case "stubnet", "network":
 			if routerID == "" {
 				continue
 			}

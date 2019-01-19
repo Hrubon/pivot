@@ -13,7 +13,7 @@ const (
 )
 
 type Graphviz struct {
-	Terminal
+	Drawer
 	filename string
 }
 

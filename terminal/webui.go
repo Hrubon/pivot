@@ -11,7 +11,7 @@ func init() {
 }
 
 type WebUI struct {
-	Terminal
+	Drawer
 	addr   string
 	port   int
 	err    error

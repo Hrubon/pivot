@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	s := sources.NewBIRDSource("/tmp/bird.2.ctl")
+	s := sources.NewBIRDSource("/tmp/bird.1.ctl")
 	rlist, err := s.GetRoutes()
 	if err != nil {
 		log.Fatal(err)

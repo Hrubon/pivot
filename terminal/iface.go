@@ -4,6 +4,6 @@ import (
 	"github.com/Hrubon/pivot/model"
 )
 
-type Terminal interface {
+type Drawer interface {
 	Draw(rlist *model.RouteList) error
 }
