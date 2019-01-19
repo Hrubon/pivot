@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/Hrubon/pivot/sources"
-	"github.com/Hrubon/pivot/terminal"
+	"github.com/Hrubon/pivot/drawing"
 	"log"
 )
 
@@ -12,10 +12,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	gv := terminal.NewGraphviz("/tmp/map.pdf")
+	gv := drawing.NewGraphviz("/tmp/map.pdf")
 	if err := gv.Draw(rlist); err != nil {
 		log.Fatal(err)
 	}
-	ui := terminal.NewWebUI("localhost", 9000)
+	ui := drawing.NewWebUI("localhost", 9000)
 	ui.Start()
 }
