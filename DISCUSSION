@@ -1,3 +1,11 @@
-- Do we want the web UI to be capable to operate without JS?
-	- At least some basic operations could work?
-
+- Web UI will provide rudimentary functionality even without JavaScript support
+	- Can download the map in several formats (PNG, PDF)
+	- Can display historical version of the map
+	- Other things if possible and feasible
+	- Immediate/aggregate data view
+- At least JavaScript 8 is required (07/2018) for advanced functions
+	- Moving objects around
+	- Attaching extra information to routers and networks (names, descriptions, TODOs, etc.)
+- Push (server to client) notification when the map changes
+	- Find an efficient solution for modern clients
+	- Long polling as fallback for legacy clients
