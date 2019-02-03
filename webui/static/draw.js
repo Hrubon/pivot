@@ -10,6 +10,21 @@ async function get(url) {
 	return resp.json()
 }
 
+async function post(url, data) {
+	json = JSON.stringify(data)
+	console.log(`POST ${url}, payload=${json}`)
+	resp = await fetch(url, {
+		headers: {
+			"Content-Type": "application/json",
+		},
+		method: "POST",
+		body: json,
+	})
+	if (!resp.ok)
+		throw `Failed to POST ${url}: ${resp.status}: ${resp.statusText}`
+	return resp.json()
+}
+
 function drawPoly(ctx, pts, fill) {
 	ctx.beginPath()
 	ctx.moveTo(...pts[0])
@@ -46,31 +61,6 @@ function drawText(ctx, x, y, w, text) {
 	ctx.restore()
 }
 
-function drawBbox(ctx, pts) {
-	ctx.save()
-	let xmin, xmax, ymin, ymax
-	xmin = ymin = Number.POSITIVE_INFINITY
-	xmax = ymax = Number.NEGATIVE_INFINITY
-	for ([x, y] of pts) {
-		if (x > xmax)
-			xmax = x
-		if (x < xmin)
-			xmin = x
-		if (y > ymax)
-			ymax = y
-		if (y < ymin)
-			ymin = y
-	}
-	console.log(xmin, ymin, xmax, ymax)
-	ctx.strokeStyle = '#ff0000'
-	let m = 10
-	ctx.beginPath()
-	ctx.rect(xmin - m, ymin - m, xmax - xmin + 2 * m, ymax - ymin + 2 * m)
-	ctx.stroke()
-	ctx.strokeStyle = '#000000'
-	ctx.restore()
-}
-
 function run(ctx, prog) {
 	ctx.save()
 	let params = {}
@@ -79,15 +69,9 @@ function run(ctx, prog) {
 		case 'p':
 		case 'P':
 			drawPoly(ctx, cmd.points, (cmd.op == 'P'))
-			drawBbox(ctx, cmd.points)
 			break;
 		case 'e':
 			let [cx, cy, a, b] = cmd.rect
-			console.log(cx, cy)
-			drawBbox(ctx, [
-				[cx - a, cy - b],
-				[cx + a, cy + b]
-			])
 			drawEllipse(ctx, ...cmd.rect)
 			break;
 		case 'b':
@@ -107,6 +91,7 @@ function run(ctx, prog) {
 }
 
 function draw(data) {
+	console.log("Redrawing graph")
 	let zoomf = 1;
 	let [x, y, w, h] = data.bb.split(',').map(s => Math.floor(parseFloat(s)));
 	let c = getCanvas()
@@ -116,63 +101,99 @@ function draw(data) {
 	let ctx = c.getContext('2d')
 	ctx.translate(margin, margin + h);
 	ctx.scale(zoomf, -zoomf);
-	for (obj of data['objects']) {
-	}
-	for (kind of ['objects', 'edges']) {
-		for (obj of data[kind]) {
-			for (s of ['_draw_', '_ldraw_']) {
-				if (s in obj) {
+	for (kind of ['objects', 'edges'])
+		for (obj of data[kind])
+			for (s of ['_draw_', '_ldraw_'])
+				if (s in obj)
 					run(ctx, obj[s])
-				}
-			}
+	return trackable(data)
+}
+
+function bbox(pts) {
+	let m = 10
+	let xmin, xmax, ymin, ymax
+	xmin = ymin = Number.POSITIVE_INFINITY
+	xmax = ymax = Number.NEGATIVE_INFINITY
+	for ([x, y] of pts) {
+		if (x > xmax)
+			xmax = x
+		if (x < xmin)
+			xmin = x
+		if (y > ymax)
+			ymax = y
+		if (y < ymin)
+			ymin = y
+	}
+	return [xmin - m, ymin - m, xmax + m, ymax + m]
+}
+
+function bboxOf(obj) {
+	pts = []
+	for (cmd of obj['_draw_']) {
+		switch (cmd.op) {
+		case 'p':
+		case 'P':
+			pts.push(...cmd.points)
+			break
+		case 'e':
+			let [cx, cy, a, b] = cmd.rect
+			pts.push([cx - a, cy - b], [cx + a, cy + b])
+			break
 		}
 	}
-			
+	return bbox(pts)
 }
 
-async function fetchAndDraw() {
-	var data = await get('graph.json')
-	draw(data)
+function drawTracked(tt) {
+	console.log("Redrawing drag 'n' drop data")
+	let c = getCanvas()
+	let ctx = c.getContext('2d')
+	for (t of tt) {
+		[xmin, ymin, xmax, ymax] = t[1]
+		ctx.save()
+		ctx.strokeStyle = '#ff0000'
+		ctx.beginPath()
+		ctx.rect(xmin, ymin, xmax - xmin, ymax - ymin)
+		ctx.stroke()
+		ctx.strokeStyle = '#000000'
+		ctx.restore()
+	}
 }
 
-function main() {
+function trackable(data) {
+	tt = []
+	for (obj of data['objects'])
+		if (obj.name.match(/^(net|router)/))
+			tt.push([obj, bboxOf(obj)])
+	return tt
+}
+
+async function main() {
 	var c = getCanvas();
+	let startX, startY;
+	let dragged = null
 	c.addEventListener('mousedown', function(e) {
-		var rect = e.target.getBoundingClientRect();
-		var x = e.clientX - rect.left; //x position within the element.
-		var y = e.clientY - rect.top;  //y position within the element.
-		active = findHoverPgon(x, y);
-		//redraw();
+		dragged = true
+		startX = e.clientX
+		startY = e.clientY
+		console.log(`Drag-drop action started at (${startX}, ${startY})`)
 	}, true);
 	c.addEventListener('mouseup', function(e) {
-		startX = startY = undefined;
-		active = undefined;
-		//redraw();
+		dragged = null
+		console.log("Drag-drop action finished")
 	}, true);
 
-	var startX, startY;
 	c.addEventListener('mousemove', function(e) {
-		var rect = e.target.getBoundingClientRect();
-		var x = e.clientX - rect.left;
-		var y = e.clientY - rect.top;
-		if (active) {
-			if (startX == undefined) {
-				startX = x;
-				startY = y;
-			}
-			dx = x - startX;
-			dy = y - startY;
-			for (let i = 0; i < active.pts.length; i++) {
-				active.pts[i][0] += dx;
-				active.pts[i][1] += dy;
-			}
-			startX = x;
-			startY = y;
-		}
-		//redraw();
-		//console.log("Active poly:", active);
 	}, true);
-	fetchAndDraw()
+	var data = await get('graph.json')
+	draw(data.GvizData)
+	resp = await post('move', {
+		Name: "foo",
+		X: 1,
+		Y: 2,
+	})
+	tt = draw(resp.GvizData)
+	drawTracked(tt)
 }
 
 main()
