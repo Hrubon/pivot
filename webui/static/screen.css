@@ -1,2 +1,7 @@
-body {
+html, body {
+	background: #ddd;
+}
+
+#myCanvas {
+	border: 1px solid black;
 }
