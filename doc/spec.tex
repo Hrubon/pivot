@@ -2,9 +2,179 @@
 \typosize[14/18]
 \activettchar|
 
-\sec User Interface (UI)
+\sec Introduction
 
-\secc Drawing the Network Graph
+This document describes in greater detail some of the features of the proposed
+Pivot utility. It is a summary of our findings from preliminary work done on
+our software project as of commit |a73842192| in our upstream repo.
+
+\label[coll]
+\sec Data Collection Process
+
+To display useful information about the network, we need to collect the data
+first.
+
+\secc OSPF Data Collection
+
+To obtain OSPF data (network topology information from which the network graph
+is constructed), we will use either:
+
+\begitems
+
+* BIRD OSPF topology dumps via BIRD CLI,
+
+* Quagga OSPF topology dumps via Quagga management socket (TODO),
+
+* (possibly other routing daemons' interfaces).
+
+\enditems
+
+We assume that a dedicated instance of either routing daemon will be deployed
+which will only be used to collect data from and won't partake in the routing
+process in any way. This setup is preferable, since it stays out of the critical
+path.
+
+The choice of deployed routing daemon is up to the user. It's arguably simpler
+and to deploy another instance of daemon $x$ in a network which already uses
+$x$ for routing information exchange, rather then forcing users to deploy $y
+\ne x$ solely for the purposes of monitoring.
+
+The dedicated routing instance will be the single source of topology information.
+
+
+\secc Traffic Data Collection
+
+To obtain information about the amount of traffic flowing through the network,
+we will use SNMP interfaces on the routers. Basically all dedicated router
+hardware provides SNMP metrics (albeit in our experience it usually does it in
+a way which is slightly incompatible with every other device in the network). 
+On Linux routers, |snmpd| can be used to provide the data.
+
+There will be a single data collection node for SNMP-enabled devices which will
+scrape all the devices. This will be our single source of traffic flow
+information.
+
+
+
+\label[gedb]
+\sec Data Storage: Graph/Event Database
+
+After researching available choices (mostly general-purpose databases and other
+custom data storage formats), we have decided to design a simple but powerful
+data storage format called the Graph/Event Database (GEDB). We're too early
+into the design process, but the main features and design goals include:
+
+\begitems
+
+* built around the assumption that we're storing graph data with lots
+of additional labels attached to the nodes and edges,
+
+* labels can be anything from arbitrary textual content to values of derived
+metrics, such as TX flow on an edge in bits per second,
+
+* plain-text to leverage existing text-processing tooling present on most
+Unix-like systems and to ease debugging,
+
+* each line of the file describes a single recorded event, such as the addition
+of a node/edge to a graph or a value of a label at the given time.
+
+\enditems
+
+The simple database system built around this file format will provide the
+following features:
+
+\begitems
+
+* retrieve the entire state of the graph at the given point in time,
+
+* retrieve a network graph which is an accurate representation of a time
+interval (the ``average graph''),
+
+* retrieve next and previous event in the event stream.
+
+\enditems
+
+We have identified the following problems we will need to solve:
+
+\begitems
+
+* data rotation scheme has to be established, so that old data can be gradually
+phased-out automatically without affecting the consistency of the database,
+
+* the plain-text files needs to be compressed to save disk space (yet to keep
+the advantages of the plain-text file format),
+
+* ideally we should be able to add historical data to the file, possibly at the
+expense of being somewhat slower in the process.
+
+\enditems
+
+
+\sec Data Export
+
+The program has the following outputs:
+
+\begitems
+
+* interactive web-based user interface described below,
+
+* network graph exported to SVG, PNG, PDF and possibly other Graphviz-provided
+terminals,
+
+* metric collection end-point for Prometheus (|/metrics|) which can be used for
+additional visualisation (Grafana) and alerting (Prometheus alerts which can
+monitored by standard tools such as Icinga).
+
+\enditems
+
+
+
+\sec User Interface
+
+The user interface (UI) is the main selling point of our software. It's also
+the pain-point of most existing tools with similar goals. Therefore, significant
+part of resources will be spent here.
+
+The UI is the primary consumer of data stored in the Graph Event Database
+(GEDB) files. GEDB itself was designed to provide the features which the UI
+needs to be useful.
+
+\secc Overall Description
+
+The UI should communicate the following information to the user:
+
+\begitems
+
+* Network Graph: how routers and networks are connected. The routers and
+networks form the nodes of the graph, the edges are the links. Paths in the
+graph correspond to possible paths of packets sent through the network.
+
+* Traffic: amount of traffic flowing through individual links (edges) in the
+traffic graph.
+
+* Labels: display other useful information obtained about the network in question.
+Subject to further research.
+
+\enditems
+
+Please refer to Section \ref[coll] to see how we plan to gather this information.
+
+\secc Time Dimension
+
+The primary dimension of the data is time, that is, the user has interest in
+how the topology and traffic changes as time goes by. Both historical data and
+situation at present time are of interest to the users -- the former is useful
+for post-mortem analysis (e.g. when assessing the effects of a network outage
+onto the paying customers), the latter for overall monitoring and
+administration of the network.
+
+To change the time dimension, the user can change the time interval displayed.
+If a discrete point in time is selected, the UI will display the state of the
+network at that moment in time. If an interval is selected, the UI will display
+the ``average network graph'' which is an accurate representation of that
+interval. This motivated the features described in Section \ref[gedb].
+
+\secc Network Graph Layout and Drawing
 
 The single most important feature of the UI is to display a network graph. This
 graph consists of routers and networks, where edges connect routers to the
@@ -75,31 +245,100 @@ mode, taking the burden off the user.
 
 \enditems
 
-\sec __Old__
+\secc Display
 
-\begitems\style a
-* Web UI is a terminal, too.
-* HTTP/2 server push to update content periodically if the client supports it,
-  legacy polling mechanism otherwise
-* JavaScript-based drag `n' drop UI to rearrange the nodes with possibly other
-  ergonomic features.
-* Fundamental operation of the Web UI (e.g. display/export of network map)
-  must operate correctly without JavaScript support.
-* Overall goal: leverage modern web technologies to provide value, not to bother.
+Display of the network graph can switch among the following display styles which
+affect how the edges of the graph are drawn:
+
+Recall that an edge is a router-network connection.
+
+\begitems
+
+* All: display all edges.
+
+* Minimum Spanning Tree (MST): display an MST of the network graph. Since network
+graphs often purposely contain cycles, their MSTs are not unique. Therefore, we
+want to allow the user to switch MSTs.
+
+* Traffic: described below.
+
 \enditems
 
-\begitems\style a
-* Objects representing nets and routers can be moved. The relocation of an object
-  results in a request being sent to the server, the object is then affixed to
-  this position on the map.
-* Upon next request/on next push update the client receives the new map where
-  the object in question has assumed its new position.
-* No intelligence in the redrawing of the map on the client, that's Graphviz's
-  job to do.
-* If an object has not been moved, its position is calculated by Graphviz
-  (the |neato| layout engine in fact). If it has been moved before, its position
-  is fixed. Such an object can be ``unpinned'' from the UI and will assume its
-  calculated position in the future.
+The Traffic display uses colors to depict the amount of traffic through a
+link's associated physical interface. The heavier/brighter the edge, the more
+traffic flows through that link's L2 interface (relative to other links). This
+results in a drawing where the most distinct links are the ones which are
+currently used the most, and the least visible are the links which are used
+little or not at all.
+
+Since network graphs can be quite dense, the goal of this display mode is to
+take most of the perceived visual complexity out of the drawing, while
+providing useful information about the traffic flow at the same time. It's
+different from the MST display in that it displays all links, albeit somewhat
+blandly.
+
+\secc Topology and Link Metric Speculation
+
+Besides our primary goal of displaying network topology and traffic at any
+given moment in time, we strive to allow the user to project how changes to the
+network topology will affect the network. This use-case is best understood
+through examples -- we would like to see what happens when:
+
+\begitems
+
+* link metrics are changed to favor certain links above of others, leading to
+better resource utilization,
+
+* new links are added to the network, e.g. when redundant links are added to the
+network to bolster fault tolerance,
+
+* links are removed from the network, as in (partial) network outages.
+
+\enditems
+
+By default, the network graph contains precisely those edges which were
+discovered through the data collection process. The user is allowed to switch to
+an alternate view where edges of the graph can be added and removed and link
+metrics can be changed.
+
+Most parts of the UI treat this user-provided data as if they were obtained in
+the data collection process. For example:
+
+\begitems
+
+* MSTs are calculated in the alternate graph as they would be in the original,
+
+* placement of nodes is subject to the same constraints as described above,
+
+* the resulting graph can be exported as usual.
+
+\enditems
+
+The major difference is traffic flow calculation. With extraneous and/or
+missing links in the graph, the distribution of traffic would be affected, and
+the modifications are often done precisely to see the projected change in
+traffic.
+
+We are not sure that a practical algorithm exists that will calculate reasonable
+approximation of traffic distribution in the modified network graph. Further
+research is needed which is out of scope of this preliminary specification.
+
+\secc Implementation Details
+
+We have agreed on the following:
+
+\begitems
+
+* Overall goal: leverage modern web technologies to provide value, not to bother.
+
+* Fundamental operation of the Web UI (e.g. display/export of network map) must
+operate correctly without JavaScript support. The distinction must be clear to
+the user.
+
+* Where JavaScript is required, version 8 is assumed (ECMAScript 2017, released
+June 2017). This version seems to be supported well by modern clients and
+provides value to the programmer (better support for futures).
+
 \enditems
 
 \bye
