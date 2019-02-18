@@ -9,3 +9,32 @@
 - Push (server to client) notification when the map changes
 	- Find an efficient solution for modern clients
 	- Long polling as fallback for legacy clients
+
+- Q:
+	- Randomizace OSPF?
+	- Nejlehčí kostry jsou vlastnost sítě, každý si počítá nexthopy sám
+	- All MSTs?
+	- Pojmenovani: metrika vs cena
+	- Multivitamin
+	- 1 PHY multiple IPs
+
+- Dimensions:
+	- Display [A/M/T]
+	- Layout [Auto/Man]
+	- Topology speculation [A/B/C]
+	- Link state speculation [A/B/C]
+	- Traffic shape [A/B/C]
+	- Labels [MUD]
+
+Layout  Display  Topolog  Link   Traffic   Labels
+ [A]M    AM[T]    A[B]C   [A]BC   AB[C]   [M][U][D]
+
+- Visualisations:
+	- Traffic flow
+	- Links through a node
+	- MSTs:
+		- With forbidden edges
+		- With required edge
+		- With changed weights
+	- Paths between two networks
+	- Adding a router, speculating about new traffic flow

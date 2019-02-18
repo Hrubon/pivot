@@ -168,32 +168,69 @@ function trackable(data) {
 	return tt
 }
 
+function findInsideObj(tt, x, y) {
+	for (t of tt) {
+		[xmin, ymin, xmax, ymax] = t[1]
+		if (xmin <= x && x <= xmax && ymin <= y && y <= ymax)
+			return t[0]
+	}
+}
+
+function toGvizCoords(x, y) {
+	return [x, getCanvas().height - y]
+}
+
 async function main() {
 	var c = getCanvas();
-	let startX, startY;
 	let dragged = null
+	let tt;
 	c.addEventListener('mousedown', function(e) {
-		dragged = true
-		startX = e.clientX
-		startY = e.clientY
-		console.log(`Drag-drop action started at (${startX}, ${startY})`)
+		let sx, sy;
+		sx = e.clientX
+		sy = e.clientY
+		dragged = findInsideObj(tt, ...toGvizCoords(sx, sy))
+		console.log(`Drag-drop action started at (${sx}, ${sy})`)
 	}, true);
 	c.addEventListener('mouseup', function(e) {
-		dragged = null
-		console.log("Drag-drop action finished")
+		let ex = e.clientX
+		let ey = e.clientY
+		let [gx, gy] = toGvizCoords(ex, ey)
+		let [x, y] = dragged.pos.split(",").map(s => parseFloat(s))
+		console.log("Orig pos:", x, y)
+		x = gx
+		y = gy
+		post('move', {
+			Name: dragged.name,
+			X: x,
+			Y: y,
+		}).then(function(resp) {
+			console.log(`Drag-drop action finished, x=${x}, y=${y}`)
+			tt = draw(resp.GvizData)
+			drawTracked(tt)
+		})
 	}, true);
 
 	c.addEventListener('mousemove', function(e) {
 	}, true);
 	var data = await get('graph.json')
-	draw(data.GvizData)
-	resp = await post('move', {
-		Name: "foo",
-		X: 1,
-		Y: 2,
-	})
-	tt = draw(resp.GvizData)
-	drawTracked(tt)
+	tt = draw(data.GvizData)
+	//resp = await post('move', {
+	//	Name: "net1",
+	//	X: 100,
+	//	Y: 0,
+	//})
+	//resp = await post('move', {
+	//	Name: "net0",
+	//	X: 188,
+	//	Y: 3,
+	//})
+	//resp = await post('move', {
+	//	Name: "router0",
+	//	X: 1030,
+	//	Y: 430,
+	//})
+	//tt = draw(resp.GvizData)
+	//drawTracked(tt)
 }
 
 main()

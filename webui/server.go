@@ -18,19 +18,21 @@ type Server struct {
 	addr  string
 	port  int
 	rlist *model.RouteList
+	pins graphviz.PinList
 }
 
 func NewServer(addr string, port int) *Server {
 	return &Server{
 		addr: addr,
 		port: port,
+		pins: graphviz.PinList{},
 	}
 }
 
 type MoveRequest struct {
 	Name string
-	X    int
-	Y    int
+	X    float64
+	Y    float64
 }
 
 type GraphResponse struct {
@@ -62,7 +64,7 @@ func sendJSON(w http.ResponseWriter, src interface{}) error {
 
 func (s *Server) graphJSON() []byte {
 	var gvizData bytes.Buffer
-	graphviz.Draw(s.rlist, "json", bufio.NewWriter(&gvizData))
+	graphviz.Draw(s.rlist, s.pins, "json", bufio.NewWriter(&gvizData))
 	return gvizData.Bytes()
 }
 
@@ -81,6 +83,7 @@ func (s *Server) postMove(w http.ResponseWriter, r *http.Request) {
 	if decodePOST(w, r, &move) != nil {
 		return
 	}
+	s.pins[move.Name] = graphviz.Pos{move.X, move.Y}
 	sendJSON(w, GraphResponse{
 		GvizData: s.graphJSON(),
 	})
