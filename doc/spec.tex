@@ -2,22 +2,91 @@
 \typosize[14/18]
 \activettchar|
 
-\chap Terminals
+\sec User Interface (UI)
 
-\sec Web UI
+\secc Drawing the Network Graph
+
+The single most important feature of the UI is to display a network graph. This
+graph consists of routers and networks, where edges connect routers to the
+networks.
+
+During our preliminary experiments with the UI, we have reached agreement on the
+following:
+
+\begitems
+
+* Nodes of the graph need to be placed automatically. For large networks, not
+having some sort of automatic layout support would be very impractical. We need
+to provide the user with a reasonable network graph even when the tool is used
+for the first time. At the same time, the tool should permit manual adjustments
+of the resulting drawing.
+
+* For drawing of the network graph, we want to rely on the |dot| suite of graph
+drawing tools, using the |neato| spring-based layout engine. This is a mature
+program which provides decent drawings for sparse graphs, albeit with some
+limitations which motivate the rest of this section.
+
+* Similar graphs often result in very different drawings under the spring
+model. This behavior is easily triggered by adding a single node or edge to an
+existing graph. This is at odds with TODO described above, making it hard to
+track visually how the topology changed over time.
+
+* Ideally, it would be possible to have positions of certain nodes calculated
+automatically, while other nodes could be ``pinned'' at the user-provided
+positions. It is possible to provide the desired location of a node in |neato|,
+but it is nonetheless subject to further transformations of the drawing, hence
+not useful in our case.
+
+\enditems
+
+To provide the automatic layout feature and to overcome the limitations
+described above at the same time, we have formalized the relationship of the
+|neato|-obtained layout and the user's manually provided layout in the following
+way.
+
+Network graph layout can be switched between automatic and manual positioning
+mode upon user's discretion. In the automatic mode, the position of each node
+and edge in the graph is calculated using |neato|. In the manual mode, nodes
+can be moved around and only labels and edges will be placed automatically by
+|neato|. The automatic mode is fully automatic, i.e. the positions given by the
+user are disregarded completely.
+
+The user can switch between manual and automatic mode upon their discretion.
+Automatic mode is the default. When the users switches from automatic to manual
+layout for the first time, each node defaults to its |neato|-calculated
+position.  If a new node appears in the graph, then in the automatic layout, its
+position will be calculated by |neato| as that of any other node (possibly
+resulting in a very different drawing compared to the previous one). In the
+manual mode, it will be placed in the upper left corner and the user will
+determine the final position of the node in the manual layout by moving it
+around as desired.
+
+This approach has the following benefits:
+
+\begitems
+
+* The user starts with a reasonably drawn graph which they can adjust as their
+wish, probably to reflect the physical topology of the network in question.  If
+the topology of the network changes significantly, the user can switch back to
+automatic layout.
+
+* |neato| still takes care of placement of edges and labels, even in the manual
+mode, taking the burden off the user.
+
+\enditems
+
+\sec __Old__
 
 \begitems\style a
 * Web UI is a terminal, too.
 * HTTP/2 server push to update content periodically if the client supports it,
   legacy polling mechanism otherwise
-* JavaScript-based drag`n'drop UI to rearrange the nodes with possibly other
+* JavaScript-based drag `n' drop UI to rearrange the nodes with possibly other
   ergonomic features.
 * Fundamental operation of the Web UI (e.g. display/export of network map)
   must operate correctly without JavaScript support.
 * Overall goal: leverage modern web technologies to provide value, not to bother.
 \enditems
-
-\secc Object Rearrangement
 
 \begitems\style a
 * Objects representing nets and routers can be moved. The relocation of an object
