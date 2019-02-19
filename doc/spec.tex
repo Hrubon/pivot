@@ -45,10 +45,26 @@ The dedicated routing instance will be the single source of topology information
 \secc Traffic Data Collection
 
 To obtain information about the amount of traffic flowing through the network,
-we will use SNMP interfaces on the routers. Basically all dedicated router
-hardware provides SNMP metrics (albeit in our experience it usually does it in
-a way which is slightly incompatible with every other device in the network). 
-On Linux routers, |snmpd| can be used to provide the data.
+we will use SNMP daemons on the routers. Basically all dedicated router
+hardware implements SNMP MIB-II data standard in their SNMP information base (as
+described in RFC 1213), and thus provides all necessary SNMP metrics, such as
+ingress or egress traffic flow on specific L2 interface. On Linux routers, |snmpd|
+can be used to provide the data, as it is also SNMP~MIB-II compliant.
+
+The more problematic part of the traffic data collection will be to correctly
+associate L3 interfaces gained from OSPF-collected data with the corresponding
+L2 interfaces. From the OSPF (L3) perspective, interfaces are identified by IP
+address assigned on some L2 interface of the router. The L2 interface can be
+either physical (ethernet, wireless, etc.) or virtual (VLAN, bridge, bonding,
+etc.), but in both cases the same SNMP metrics should be available for data
+collection. The key problem is to find corresponding L2 interface for the given
+IP address, because this association is not directly recorded either in SNMP
+MIB-II compliant information base. Possible solution is to gather this
+information from ARP table of the given router, as ARP table is also exposed
+through SNMP MIB-II. The L2 interface can be then found by its MAC address in
+the SNMP MIB. So the traffic data collection is possible, but the SNMP queries
+will not be that straightforward and probably some level of caching will be
+necessary.
 
 There will be a single data collection node for SNMP-enabled devices which will
 scrape all the devices. This will be our single source of traffic flow
