@@ -55,7 +55,7 @@ The more problematic part of the traffic data collection will be to correctly
 associate L3 interfaces gained from OSPF-collected data with the corresponding
 L2 interfaces. From the OSPF (L3) perspective, interfaces are identified by IP
 address assigned on some L2 interface of the router. The L2 interface can be
-either physical (ethernet, wireless, etc.) or virtual (VLAN, bridge, bonding,
+either physical (Ethernet, wireless, etc.) or virtual (VLAN, bridge, bonding,
 etc.), but in both cases the same SNMP metrics should be available for data
 collection. The key problem is to find corresponding L2 interface for the given
 IP address, because this association is not directly recorded either in SNMP
@@ -355,7 +355,7 @@ the user.
 June 2017). This version seems to be supported well by modern clients and
 provides value to the programmer (better support for futures).
 
-* Most of the back-end porotion of the application (data collection, data
+* Most of the back-end portion of the application (data collection, data
 storage, etc.) will be written in Go language. The most performance-critical
 parts may be written in C language, if we will find it reasonably beneficial.
 
