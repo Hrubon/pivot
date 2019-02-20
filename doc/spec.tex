@@ -90,8 +90,8 @@ metrics, such as TX flow on an edge in bits per second,
 
 * encoded in CBOR,
 
-* each line of the file describes a single recorded event, such as the addition
-of a node/edge to a graph or a value of a label at the given time,
+* events (such as the addition of a node/edge to a graph or a value of a label
+at the given time) will be serialized as sequential CBOR stream into a file,
 
 * the file will probably contain snapshots, i.e. dumps of complete state of
 the graph as of some time for efficiency.
@@ -118,9 +118,6 @@ We have identified the following problems we will need to solve:
 
 * data rotation scheme has to be established, so that old data can be gradually
 phased-out automatically without affecting the consistency of the database,
-
-* the plain-text files needs to be compressed to save disk space (yet to keep
-the advantages of the plain-text file format),
 
 * ideally we should be able to add historical data to the file, possibly at the
 expense of being somewhat slower in the process.
