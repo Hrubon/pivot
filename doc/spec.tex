@@ -88,11 +88,13 @@ of additional labels attached to the nodes and edges,
 * labels can be anything from arbitrary textual content to values of derived
 metrics, such as TX flow on an edge in bits per second,
 
-* plain-text to leverage existing text-processing tooling present on most
-Unix-like systems and to ease debugging,
+* encoded in CBOR,
 
 * each line of the file describes a single recorded event, such as the addition
-of a node/edge to a graph or a value of a label at the given time.
+of a node/edge to a graph or a value of a label at the given time,
+
+* the file will probably contain snapshots, i.e. dumps of complete state of
+the graph as of some time for efficiency.
 
 \enditems
 
@@ -272,9 +274,9 @@ Recall that an edge is a router-network connection.
 
 * All: display all edges.
 
-* Minimum Spanning Tree (MST): display an MST of the network graph. Since network
-graphs often purposely contain cycles, their MSTs are not unique. Therefore, we
-want to allow the user to switch MSTs.
+* Shortest Path Tree (SPT): display an SPT of the network graph. Since network
+graphs often purposely contain cycles, their SPTs are not unique. Therefore, we
+want to allow the user to switch SPTs.
 
 * Traffic: described below.
 
@@ -290,7 +292,7 @@ little or not at all.
 Since network graphs can be quite dense, the goal of this display mode is to
 take most of the perceived visual complexity out of the drawing, while
 providing useful information about the traffic flow at the same time. It's
-different from the MST display in that it displays all links, albeit somewhat
+different from the SPT display in that it displays all links, albeit somewhat
 blandly.
 
 \secc Topology and Link Metric Speculation
@@ -322,7 +324,7 @@ the data collection process. For example:
 
 \begitems
 
-* MSTs are calculated in the alternate graph as they would be in the original,
+* SPTs are calculated in the alternate graph as they would be in the original,
 
 * placement of nodes is subject to the same constraints as described above,
 
